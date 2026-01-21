@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Aplikasi Tip Simple</title>
+    <style>
+        :root {
+            --primary: #007bff;
+            --success: #28a745;
+            --danger: #dc3545;
+            --bg: #ffffff;
+            --border: #e9ecef;
+            --text: #343a40;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: #f8f9fa;
+            color: var(--text);
+            min-height: 100vh;
+            display: flex; flex-direction: column;
+        }
+
+        /* --- MODAL POPUP --- */
+        #modalOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 2000;
+            display: none; justify-content: center; align-items: center;
+            opacity: 0; transition: opacity 0.2s;
+        }
+        #modalOverlay.show { display: flex; opacity: 1; }
+
+        .modal-content {
+            background: var(--bg);
+            width: 95%; max-width: 350px;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .modal-title { font-weight: 700; font-size: 1.1rem; margin-bottom: 15px; }
+        .modal-amount { font-size: 2rem; font-weight: 800; margin-bottom: 20px; color: var(--primary); }
+        
+        .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+        .btn-num {
+            padding: 15px; border: 1px solid var(--border); background: white;
+            border-radius: 8px; font-weight: 600; cursor: pointer;
+        }
+        .btn-num:active { background: #e2e6ea; }
+
+        .modal-actions { display: flex; gap: 10px; }
+        .btn-modal {
+            flex: 1; padding: 12px; border: none; border-radius: 8px;
+            font-weight: 600; cursor: pointer; color: white;
+        }
+        .btn-cancel { background: var(--text); }
+        .btn-save { background: var(--primary); }
+
+        /* --- MAIN UI --- */
+        .wrapper { max-width: 600px; margin: 0 auto; width: 100%; padding: 15px; flex: 1; }
+        
+        /* 4 KOLOM STATISTIK */
+        .header {
+            background: white; padding: 15px; border-radius: 10px;
+            margin-bottom: 15px; border: 1px solid var(--border);
+        }
+        .stats-grid {
+            display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+        }
+        .stat-box {
+            background: #f1f3f5; padding: 12px; border-radius: 8px; text-align: center;
+        }
+        .stat-box.today-in { border-left: 4px solid var(--success); }
+        .stat-box.today-out { border-left: 4px solid var(--danger); }
+        .stat-box.total-in { border-left: 4px solid #17a2b8; }
+        .stat-box.total-out { border-left: 4px solid #6c757d; }
+
+        .stat-label { font-size: 0.65rem; text-transform: uppercase; color: #666; font-weight: 700; margin-bottom: 4px; }
+        .stat-value { font-size: 1.1rem; font-weight: 800; line-height: 1.2; }
+        .text-success { color: var(--success); }
+        .text-danger { color: var(--danger); }
+        .text-info { color: #17a2b8; }
+        .text-muted { color: #6c757d; }
+
+        /* Tombol Full Width */
+        .btn-full {
+            width: 100%; padding: 18px; margin-bottom: 10px;
+            border: none; border-radius: 8px;
+            font-size: 1rem; font-weight: 700; color: white;
+            cursor: pointer; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .btn-in { background: var(--success); }
+        .btn-out { background: var(--danger); }
+        
+        /* Utilitas */
+        .util-wrapper { margin-bottom: 15px; }
+        .util-row { display: flex; gap: 10px; }
+        .util-btn {
+            flex: 1; padding: 12px; border: 1px solid var(--border); background: white;
+            border-radius: 8px; font-weight: 600; cursor: pointer; text-align: center;
+        }
+
+        /* List History */
+        .list-title {
+            font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; color: #888;
+            display: flex; justify-content: space-between;
+        }
+        .btn-toggle-list { color: var(--primary); background: none; border: none; font-weight: 700; cursor: pointer; }
+
+        .history-list {
+            overflow: hidden; max-height: 2000px; opacity: 1; transition: 0.3s;
+        }
+        .history-list.hidden { max-height: 0; opacity: 0; margin-bottom: 0; }
+
+        .list-item {
+            background: white; padding: 12px; margin-bottom: 8px; border-radius: 8px;
+            display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border);
+        }
+        .item-left h4 { font-size: 0.9rem; margin: 0; }
+        .item-left p { font-size: 0.75rem; color: #888; margin: 2px 0 0 0; }
+        .item-amount { font-weight: 800; margin-right: 10px; font-size: 0.95rem; }
+        .am-in { color: var(--success); }
+        .am-out { color: var(--danger); }
+        .btn-del { background: #ffebeb; color: var(--danger); border: none; width: 28px; height: 28px; border-radius: 5px; cursor: pointer; font-weight: 700; }
+
+        #fileInput { display: none; }
+    </style>
+</head>
+<body>
+
+    <!-- MODAL POPUP -->
+    <div id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-title">INPUT NOMINAL</div>
+            <div class="modal-amount" id="modalTempAmount">Rp 0</div>
+            <div class="modal-grid">
+                <button class="btn-num" onclick="addToModal(1000)">1rb</button>
+                <button class="btn-num" onclick="addToModal(5000)">5rb</button>
+                <button class="btn-num" onclick="addToModal(10000)">10rb</button>
+                <button class="btn-num" onclick="addToModal(20000)">20rb</button>
+                <button class="btn-num" onclick="addToModal(50000)">50rb</button>
+                <button class="btn-num" onclick="addToModal(100000)">100rb</button>
+            </div>
+            <div class="modal-actions">
+                <button class="btn-modal btn-cancel" onclick="closeModal()">Batal</button>
+                <button class="btn-modal btn-save" id="btnSaveModal" onclick="confirmModal()">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="wrapper">
+        <!-- HEADER STATS (4 KOLOM) -->
+        <div class="header">
+            <div class="stats-grid">
+                <div class="stat-box today-in">
+                    <div class="stat-label">Masuk Hari Ini</div>
+                    <div class="stat-value text-success" id="todayInBox">Rp 0</div>
+                </div>
+                <div class="stat-box today-out">
+                    <div class="stat-label">Keluar Hari Ini</div>
+                    <div class="stat-value text-danger" id="todayOutBox">Rp 0</div>
+                </div>
+                <div class="stat-box total-in">
+                    <div class="stat-label">Total Masuk</div>
+                    <div class="stat-value text-info" id="totalInBox">Rp 0</div>
+                </div>
+                <div class="stat-box total-out">
+                    <div class="stat-label">Total Keluar</div>
+                    <div class="stat-value text-muted" id="totalOutBox">Rp 0</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TOMBOL UTAMA -->
+        <button class="btn-full btn-in" onclick="openModal('in')">+ TAMBAH UANG</button>
+        <button class="btn-full btn-out" onclick="openModal('out')">- AMBIL UANG</button>
+
+        <!-- TOMBOL UTILITAS -->
+        <div id="utilityWrapper" class="util-wrapper">
+            <div class="util-row">
+                <button class="util-btn" onclick="downloadData()">SIMPAN</button>
+                <button class="util-btn" onclick="triggerUpload()">MUAT</button>
+                <button class="util-btn" onclick="sendToWhatsApp()">REKAP WA</button>
+                <button class="util-btn" style="background:#ffebeb; color:var(--danger);" onclick="resetAll()">RESET</button>
+            </div>
+        </div>
+
+        <!-- LIST HISTORY -->
+        <div class="list-title">
+            RIWAYAT TRANSAKSI
+            <button class="btn-toggle-list" onclick="toggleHistory()" id="toggleBtn">SEMBUNYIKAN</button>
+        </div>
+        <div id="listContainer" class="history-list"></div>
+    </div>
+
+    <input type="file" id="fileInput" accept=".json" onchange="handleFileUpload(this)">
+
+    <script>
+        let transactions = [];
+        let currentMode = 'in';
+        let modalTempAmount = 0;
+
+        window.onload = function() {
+            const saved = localStorage.getItem('tipAppData');
+            if (saved) {
+                try {
+                    let raw = JSON.parse(saved);
+                    transactions = raw.map(item => {
+                        if (typeof item.type === 'undefined') {
+                            return { ...item, type: 'in' };
+                        }
+                        return item;
+                    });
+                } catch (e) {}
+            }
+            updateUI();
+        };
+
+        function updateUI() {
+            renderList();
+            updateStats();
+        }
+
+        // --- CORE LOGIC ---
+        function saveToLocal() {
+            localStorage.setItem('tipAppData', JSON.stringify(transactions));
+            updateUI();
+        }
+
+        function confirmModal() {
+            if (modalTempAmount === 0) return;
+            closeModal();
+            const entry = {
+                id: Date.now(),
+                amount: modalTempAmount,
+                type: currentMode,
+                date: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+            };
+            transactions.unshift(entry);
+            saveToLocal();
+        }
+
+        function deleteItem(id) {
+            if(confirm('Hapus?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveToLocal();
+            }
+        }
+
+        function resetAll() {
+            if(confirm('Hapus semua data?')) {
+                transactions = [];
+                saveToLocal();
+            }
+        }
+
+        // --- STATS UPDATE ---
+        function updateStats() {
+            const todayStr = new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' });
+            const todayItems = transactions.filter(item => item.date.split(',')[0] === todayStr);
+
+            const todayIn = todayItems.reduce((sum, item) => sum + ((item.type||'in')==='in' ? item.amount : 0), 0);
+            document.getElementById('todayInBox').innerText = formatRupiah(todayIn);
+
+            const todayOut = todayItems.reduce((sum, item) => sum + ((item.type||'in')==='out' ? item.amount : 0), 0);
+            document.getElementById('todayOutBox').innerText = formatRupiah(todayOut);
+
+            const totalIn = transactions.reduce((sum, item) => sum + ((item.type||'in')==='in' ? item.amount : 0), 0);
+            document.getElementById('totalInBox').innerText = formatRupiah(totalIn);
+
+            const totalOut = transactions.reduce((sum, item) => sum + ((item.type||'in')==='out' ? item.amount : 0), 0);
+            document.getElementById('totalOutBox').innerText = formatRupiah(totalOut);
+        }
+
+        function renderList() {
+            const container = document.getElementById('listContainer');
+            container.innerHTML = '';
+            if (transactions.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:20px; color:#888;">Belum ada data</div>';
+                return;
+            }
+            transactions.forEach(item => {
+                const type = item.type || 'in';
+                const isOut = type === 'out';
+                const sign = isOut ? '-' : '+';
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <div class="item-left">
+                        <h4>${isOut ? 'Uang Keluar' : 'Uang Masuk'}</h4>
+                        <p>${item.date}</p>
+                    </div>
+                    <div style="display:flex; align-items:center;">
+                        <span class="item-amount ${isOut ? 'am-out' : 'am-in'}">${sign} ${formatRupiah(item.amount).replace('Rp','')}</span>
+                        <button class="btn-del" onclick="deleteItem(${item.id})">&times;</button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function toggleHistory() {
+            const container = document.getElementById('listContainer');
+            const wrapper = document.getElementById('utilityWrapper');
+            const btn = document.getElementById('toggleBtn');
+            
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                btn.innerText = "SEMBUNYIKAN";
+                container.parentNode.insertBefore(wrapper, container);
+            } else {
+                container.classList.add('hidden');
+                btn.innerText = "LIHAT RIWAYAT";
+                const btnIn = document.querySelector('.btn-in');
+                btnIn.parentNode.insertBefore(wrapper, btnIn.nextSibling);
+            }
+        }
+
+        function formatRupiah(num) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+        }
+
+        // --- MODAL FUNCTIONS ---
+        function openModal(mode) {
+            currentMode = mode;
+            modalTempAmount = 0;
+            document.getElementById('modalTempAmount').innerText = formatRupiah(modalTempAmount);
+            const btnSave = document.getElementById('btnSaveModal');
+            if (mode === 'in') {
+                btnSave.style.background = "var(--success)";
+                btnSave.innerText = "MASUK";
+            } else {
+                btnSave.style.background = "var(--danger)";
+                btnSave.innerText = "KELUAR";
+            }
+            const el = document.getElementById('modalOverlay');
+            el.style.display = 'flex';
+            setTimeout(() => el.classList.add('show'), 10);
+        }
+
+        function closeModal() {
+            const el = document.getElementById('modalOverlay');
+            el.classList.remove('show');
+            setTimeout(() => el.style.display = 'none', 200);
+        }
+
+        function addToModal(amount) {
+            modalTempAmount += amount;
+            document.getElementById('modalTempAmount').innerText = formatRupiah(modalTempAmount);
+        }
+
+        // --- WHATSAPP RECAP (TEKS SAJA) ---
+        function sendToWhatsApp() {
+            if(transactions.length === 0) return alert("Kosong!");
+            
+            const todayStr = new Date().toLocaleDateString('id-ID', { dateStyle: 'medium' });
+            const todayItems = transactions.filter(item => item.date.split(',')[0] === todayStr);
+            
+            const todayIn = todayItems.reduce((sum, item) => sum + ((item.type||'in')==='in'?item.amount:0), 0);
+            const todayOut = todayItems.reduce((sum, item) => sum + ((item.type||'in')==='out'?item.amount:0), 0);
+            
+            const totalIn = transactions.reduce((sum, item) => sum + ((item.type||'in')==='in'?item.amount:0), 0);
+            const totalOut = transactions.reduce((sum, item) => sum + ((item.type||'in')==='out'?item.amount:0), 0);
+
+            let message = `*LAPORAN KEUANGAN HARIAN*\n`;
+            message += `================================\n`;
+            message += `📅 Tanggal: ${todayStr}\n\n`;
+            
+            message += `📊 *RINGKASAN HARI INI:*\n`;
+            message += `💰 Uang Masuk : ${formatRupiah(todayIn)}\n`;
+            message += `📤 Uang Keluar : ${formatRupiah(todayOut)}\n`;
+            message += `📉 Saldo Bersih : ${formatRupiah(todayIn - todayOut)}\n\n`;
+
+            message += `💎 *REKAP KESULURUHAN:*\n`;
+            message += `📈 Total Masuk  : ${formatRupiah(totalIn)}\n`;
+            message += `📉 Total Keluar : ${formatRupiah(totalOut)}\n`;
+            message += `================================\n`;
+            message += `_Terima kasih._`;
+
+            const encodedMsg = encodeURIComponent(message);
+            const targetNumber = "6281313601538";
+            const url = `https://wa.me/${targetNumber}?text=${encodedMsg}`;
+            window.open(url, '_blank');
+        }
+
+        // --- FILE SYSTEM MANUAL ---
+        function downloadData() {
+            if(transactions.length === 0) return alert("Kosong!");
+            const blob = new Blob([JSON.stringify(transactions)], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `data_${Date.now()}.json`;
+            a.click();
+            URL.revokeObjectURL(url);
+            alert("File disimpan!");
+        }
+
+        function triggerUpload() { document.getElementById('fileInput').click(); }
+
+        function handleFileUpload(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const json = JSON.parse(e.target.result);
+                    if (Array.isArray(json)) {
+                        if(confirm("Timpa data?")) {
+                            transactions = json.map(item => typeof item.type==='undefined' ? {...item, type:'in'} : item);
+                            saveToLocal();
+                            alert("Berhasil!");
+                        }
+                    }
+                } catch(err) { alert("Error file"); }
+            };
+            reader.readAsText(file);
+            input.value = '';
+        }
+    </script>
+</body>
+</html>
