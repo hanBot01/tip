@@ -3,11 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aplikasi Penghitung Tip</title>
+    <title>Aplikasi Hitung Tip & Nombok</title>
     <style>
         :root {
             --green: #28a745;
             --red: #dc3545;
+            --blue: #007bff;
+            --orange: #fd7e14;
             --bg: #ffffff;
             --border: #e2e8f0;
             --text: #343a40;
@@ -22,12 +24,13 @@
             color: var(--text);
             min-height: 100vh;
             display: flex; flex-direction: column;
+            padding-bottom: 20px;
         }
 
         /* --- MODAL POPUP --- */
         #modalOverlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5);
+            background: rgba(0,0,0,0.6);
             backdrop-filter: blur(4px);
             z-index: 2000;
             display: none; justify-content: center; align-items: center;
@@ -37,112 +40,125 @@
 
         .modal-content {
             background: var(--bg);
-            width: 90%; max-width: 350px;
+            width: 90%; max-width: 360px;
             border-radius: 16px;
             padding: 24px;
             border: 1px solid var(--bg);
             text-align: center;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; gap: 15px;
         }
-        .modal-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 15px; }
-        .modal-amount { font-size: 2.2rem; font-weight: 800; margin-bottom: 20px; color: var(--text); }
+        .modal-title { font-weight: 700; font-size: 1.2rem; margin-bottom: 5px; color: var(--dark-gray); }
         
-        .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-        .btn-num {
-            padding: 16px; border: 1px solid #e2e8f0; background: white;
-            border-radius: 10px; font-weight: 700; font-size: 1.1rem; cursor: pointer;
-            transition: background 0.1s;
+        /* Dropdown Style */
+        .select-wrapper {
+            position: relative;
+            width: 100%;
         }
-        .btn-num:active { background: #e2e6ea; transform: scale(0.95); }
+        select#categorySelect {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            background-color: #f8f9fa;
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text);
+            appearance: none; 
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        .select-wrapper::after {
+            content: "▼";
+            font-size: 0.7rem;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #888;
+            pointer-events: none;
+        }
 
-        .modal-actions { display: flex; gap: 10px; }
+        .modal-amount { 
+            font-size: 2.2rem; font-weight: 800; margin: 5px 0; 
+            color: var(--text); word-break: break-all;
+        }
+        
+        .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 5px; }
+        .btn-num {
+            padding: 14px; border: 1px solid #e2e8f0; background: white;
+            border-radius: 10px; font-weight: 700; font-size: 1rem; cursor: pointer;
+            transition: background 0.1s, transform 0.05s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .btn-num:active { background: #e2e6ea; transform: scale(0.96); }
+
+        .modal-actions { display: flex; gap: 10px; margin-top: 10px; }
         .btn-modal {
             flex: 1; padding: 14px; border: none; border-radius: 10px;
             font-weight: 700; cursor: pointer; color: white; font-size: 1rem;
         }
         .btn-cancel { background: #e9ecef; color: var(--dark-gray); }
-        .btn-save { background: var(--green); }
+        .btn-save { background: var(--blue); transition: background 0.2s;}
 
         /* --- MAIN UI --- */
         .wrapper { max-width: 600px; margin: 0 auto; width: 100%; padding: 15px; flex: 1; }
         
         .header {
-            background: var(--bg); padding: 20px; border-radius: 12px;
+            background: var(--bg); padding: 25px 20px; border-radius: 16px;
             margin-bottom: 20px; border: 1px solid #e2e8f0;
             text-align: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            transition: transform 0.2s, background-color 0.5s;
-            position: relative;
-            z-index: 10;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+            position: relative; z-index: 10;
         }
         .label { font-size: 0.8rem; text-transform: uppercase; color: #888; font-weight: 700; letter-spacing: 1px; margin-bottom: 5px; }
-        .total-big { font-size: 2.5rem; font-weight: 800; color: var(--text); display: block; transition: color 0.5s; }
+        .total-big { font-size: 2.8rem; font-weight: 800; color: var(--text); display: block; }
         
-        /* Animasi Pop Angka */
-        .pop-anim {
-            display: inline-block;
-            animation: popEffect 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        @keyframes popEffect {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.3); }
-            100% { transform: scale(1); }
-        }
+        /* Animasi Flash */
+        @keyframes flashGreen { 0% { background-color: rgba(40, 167, 69, 0.7); } 100% { background-color: var(--bg); } }
+        @keyframes flashRed { 0% { background-color: rgba(220, 53, 69, 0.7); } 100% { background-color: var(--bg); } }
+        @keyframes flashOrange { 0% { background-color: rgba(253, 126, 20, 0.7); } 100% { background-color: var(--bg); } }
 
-        /* Animasi Flash Background (Efek Warna) */
-        @keyframes flashGreen {
-            0% { background-color: rgba(40, 167, 69, 0.6); transform: scale(1.05); }
-            100% { background-color: var(--bg); transform: scale(1); }
-        }
-        @keyframes flashRed {
-            0% { background-color: rgba(220, 53, 69, 0.6); transform: scale(1.05); }
-            100% { background-color: var(--bg); transform: scale(1); }
-        }
-
-        /* Class yang akan ditambahkan oleh JS */
-        .flash-in-effect {
-            animation: flashGreen 0.8s ease-out forwards;
-        }
-        .flash-out-effect {
-            animation: flashRed 0.8s ease-out forwards;
-        }
+        .flash-in { animation: flashGreen 0.8s ease-out forwards; }
+        .flash-out { animation: flashRed 0.8s ease-out forwards; }
+        .flash-nombok { animation: flashOrange 0.8s ease-out forwards; }
 
         /* Action Buttons */
         .action-row {
-            display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;
+            display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;
         }
         .btn-action {
-            padding: 20px; border: none; border-radius: 12px;
+            padding: 20px; border: none; border-radius: 14px;
             font-size: 1.1rem; font-weight: 700; color: white;
             cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;
-            transition: transform 0.1s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); transition: transform 0.1s;
         }
-        .btn-action:active { transform: scale(0.95); }
+        .btn-action:active { transform: scale(0.96); }
         
-        .btn-in { background: var(--green); }
-        .btn-out { background: var(--red); }
+        .btn-in { background: linear-gradient(135deg, #28a745, #20c997); }
+        .btn-out { background: linear-gradient(135deg, #dc3545, #fd7e14); }
 
-        /* Utilitas */
-        .util-wrapper { margin-bottom: 20px; }
-        .util-row { display: flex; gap: 10px; }
+        /* Utilitas Wrapper */
+        .util-section {
+            margin-bottom: 20px;
+        }
+        .util-row { display: flex; gap: 10px; flex-wrap: wrap; }
         .util-btn {
-            flex: 1; padding: 12px; border: 1px solid #e2e8f0; background: white;
-            border-radius: 10px; font-weight: 700; cursor: pointer; text-align: center;
+            flex: 1; min-width: 70px; padding: 10px 5px; border: 1px solid #e2e8f0; background: white;
+            border-radius: 10px; font-weight: 600; cursor: pointer; text-align: center;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            color: var(--dark-gray);
+            color: var(--dark-gray); box-shadow: 0 2px 4px rgba(0,0,0,0.03);
         }
         .util-btn:active { background: #f8f9fa; transform: scale(0.98); }
         
-        .util-icon { width: 20px; height: 20px; margin-bottom: 5px; }
-        /* Ikon warna merah khusus untuk tombol reset */
-        .icon-reset { color: var(--red); stroke: var(--red); }
+        .util-icon { width: 20px; height: 20px; margin-bottom: 4px; }
 
         /* List History */
         .list-title {
-            font-size: 0.9rem; font-weight: 700; margin-bottom: 10px; text-transform: uppercase; color: #888;
-            display: flex; justify-content: space-between;
+            font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; text-transform: uppercase; color: #888;
+            display: flex; justify-content: space-between; align-items: center;
         }
-        .btn-toggle-list { color: var(--text); background: none; border: none; font-weight: 700; cursor: pointer; font-size: 0.85rem; text-decoration: underline; }
+        .btn-toggle-list { color: var(--blue); background: none; border: none; font-weight: 700; cursor: pointer; font-size: 0.85rem; }
 
         .history-list {
             overflow: hidden; max-height: 2000px; opacity: 1; transition: 0.4s ease-in-out;
@@ -150,20 +166,44 @@
         .history-list.hidden { max-height: 0; opacity: 0; margin-bottom: 0; }
 
         .list-item {
-            background: white; padding: 15px; margin-bottom: 10px; border-radius: 10px;
-            display: flex; justify-content: space-between; align-items: center;
+            background: white; padding: 15px; margin-bottom: 10px; border-radius: 12px;
+            display: flex; flex-direction: column; gap: 8px;
             border: 1px solid #e2e8f0;
         }
-        .item-left h4 { font-size: 1rem; margin: 0; font-weight: 700; }
-        .item-left p { font-size: 0.75rem; color: #888; margin: 2px 0 0 0; }
+        .item-top {
+            display: flex; justify-content: space-between; align-items: flex-start;
+        }
+        .cat-badge {
+            font-size: 0.7rem; font-weight: 700; padding: 3px 8px; border-radius: 6px;
+            text-transform: uppercase; letter-spacing: 0.5px;
+            display: inline-block; margin-bottom: 4px;
+        }
+        .bg-tip { background: #d4edda; color: #155724; }
+        .bg-nombok { background: #ffeeba; color: #856404; }
+        .bg-misc { background: #e2e3e5; color: #383d41; }
+
+        .item-left h4 { font-size: 1rem; margin: 0; font-weight: 700; color: var(--dark-gray); }
+        .item-left p { font-size: 0.75rem; color: #aaa; margin: 0; }
         .item-amount { font-weight: 800; font-size: 1.1rem; }
         .am-in { color: var(--green); }
         .am-out { color: var(--red); }
-        .btn-del { background: #fff0f0; color: var(--red); border: none; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+        
+        .item-actions {
+            display: flex; justify-content: flex-end; margin-top: 5px; padding-top: 8px; border-top: 1px solid #f1f1f1;
+        }
+        .btn-del { background: #fff0f0; color: var(--red); border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
         
         .action-icon { width: 20px; height: 20px; fill: white; }
 
         #fileInput { display: none; }
+        
+        /* Toast Notification */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(100px);
+            background: #333; color: white; padding: 10px 20px; border-radius: 50px;
+            font-size: 0.9rem; font-weight: 600; opacity: 0; transition: 0.3s; z-index: 3000;
+        }
+        .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
     </style>
 </head>
 <body>
@@ -172,14 +212,30 @@
     <svg style="display: none;">
         <symbol id="icon-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
         <symbol id="icon-minus" viewBox="0 0 24 24"><path d="M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-        <!-- Ikon Trash -->
         <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
+        <symbol id="icon-wa" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></symbol>
     </svg>
 
     <!-- MODAL POPUP -->
     <div id="modalOverlay">
         <div class="modal-content">
-            <div class="modal-title">INPUT NOMINAL</div>
+            <div class="modal-title">INPUT TRANSAKSI</div>
+            
+            <!-- DROPDOWN KATEGORI -->
+            <div class="select-wrapper">
+                <select id="categorySelect" onchange="adjustButtonColor()">
+                    <!-- Opsi Masuk -->
+                    <option value="Uang Tip">Uang Tip</option>
+                    <option value="Uang Nombok">Uang Nombok</option>
+                    <option value="Lainnya">Lainnya</option>
+                    
+                    <!-- Opsi Keluar -->
+                    <option value="Keluar Tip">Keluar (Pakai Tip)</option>
+                    <option value="Keluar Nombok">Keluar (Pakai Nombok)</option>
+                    <option value="Keluar Lainnya">Keluar (Lainnya)</option>
+                </select>
+            </div>
+
             <div class="modal-amount" id="modalTempAmount">Rp 0</div>
             <div class="modal-grid">
                 <button class="btn-num" onclick="addToModal(1000)">1rb</button>
@@ -191,19 +247,19 @@
             </div>
             <div class="modal-actions">
                 <button class="btn-modal btn-cancel" onclick="closeModal()">Batal</button>
-                <button class="btn-modal btn-save" id="btnSaveModal" onclick="confirmModal()">Simpan</button>
+                <button class="btn-modal btn-save" id="btnSaveModal" onclick="confirmModal()">SIMPAN</button>
             </div>
         </div>
     </div>
 
     <div class="wrapper">
-        <!-- HANYA TOTAL SALDO -->
+        <!-- HEADER TOTAL -->
         <div class="header" id="headerCard">
             <div class="label">Total Saldo Aktif</div>
             <div class="total-big" id="grandTotal">Rp 0</div>
         </div>
 
-        <!-- TOMBOL SEJAJAR -->
+        <!-- TOMBOL UTAMA -->
         <div class="action-row">
             <button class="btn-action btn-in" onclick="openModal('in')">
                 <svg class="action-icon"><use href="#icon-plus"></use></svg>
@@ -215,15 +271,15 @@
             </button>
         </div>
 
-        <!-- UTILITAS -->
-        <div id="utilityWrapper" class="util-wrapper">
+        <!-- UTILITAS (SIMPAN, MUAT, RESET, WA) -->
+        <div class="util-section">
             <div class="util-row">
                 <button class="util-btn" onclick="downloadData()">
-                    <svg class="util-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5 11-11V11a2 2 0 0 1-2-2h-2m-7-4h14a1 1 0 0 0 1 1v10a1 1 0 0 0-1 1h-14a1 1 0 0 0-1-1V11a1 1 0 0 0 1-1z"></path></svg>
+                    <svg class="util-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3a9 9 0 1 0-9-9 9 9 0 0 0 9 9z"></path></svg>
                     SIMPAN
                 </button>
                 <button class="util-btn" onclick="triggerUpload()">
-                    <svg class="util-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3a9 9 0 1 0-9-9 9 9 0 0 0 9 9z"></path></svg>
+                    <svg class="util-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3a9 9 0 1 0-9-9 9 9 0 0 0 9 9z"></path><path d="M12 12v9"></path></svg>
                     MUAT
                 </button>
                 <button class="util-btn" onclick="resetData()">
@@ -231,21 +287,22 @@
                     RESET
                 </button>
                 <button class="util-btn" onclick="sendToWhatsApp()">
-                    <svg class="util-icon" viewBox="0 0 24 24" fill="#25D366"><path d="M21 11.5a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1-.9 6.5C17.8 22 12 22 12 22S6.2 22 6.2 22c-3.1 0-6-.6-8.5-1.5a8.38 8.38 0 0 1-.9-3.8c.06-.19.13-.38.23-.55a3.9 3.9 0 0 0-2-2.4 7.6 7.6 0 0 0-4.4-2c-.29-.1-.58-.18-.86-.28zM12 2C6.48 2 2 6.48 2 12s4.48 10 10 10-4.48 10-10-10S2 4.48 2 12z"></path><path d="M8.6 12.6l4.5-4.5a1.25 1.25 0 0 1 1.8-1.8l-4.5 4.5a1.25 1.25 0 0 1 1.8 1.8l4.5-4.5a1.25 1.25 0 0 1-1.8 1.8L8.6 12.6z"></path></svg>
-                    REKAP
+                    <svg class="util-icon" viewBox="0 0 24 24" fill="#25D366"><use href="#icon-wa"></use></svg>
+                    KIRIM WA
                 </button>
             </div>
         </div>
 
-        <!-- LIST HISTORY (DETAIL) -->
+        <!-- LIST HISTORY -->
         <div class="list-title">
-            RIWAYAT
-            <button class="btn-toggle-list" onclick="toggleHistory()" id="toggleBtn">SEMBUNYIKAN</button>
+            RIWAYAT TRANSAKSI
+            <button class="btn-toggle-list" onclick="toggleHistory()" id="toggleBtn">Tutup</button>
         </div>
         <div id="listContainer" class="history-list"></div>
     </div>
 
     <input type="file" id="fileInput" accept=".json" onchange="handleFileUpload(this)">
+    <div id="toast" class="toast">Data Tersimpan</div>
 
     <script>
         let transactions = [];
@@ -258,9 +315,9 @@
                 try {
                     let raw = JSON.parse(saved);
                     transactions = raw.map(item => {
-                        if (typeof item.type === 'undefined') {
-                            return { ...item, type: 'in' };
-                        }
+                        // Pastikan tipe ada untuk kompatibilitas data lama
+                        if (typeof item.type === 'undefined') item.type = 'in';
+                        if (!item.category) item.category = 'Lainnya';
                         return item;
                     });
                 } catch (e) {}
@@ -273,153 +330,49 @@
             updateTotal();
         }
 
-        // --- CORE LOGIC ---
         function saveToLocal() {
             localStorage.setItem('tipAppData', JSON.stringify(transactions));
             updateUI();
         }
 
-        function confirmModal() {
-            if (modalTempAmount === 0) return;
-            closeModal();
-            const entry = {
-                id: Date.now(),
-                amount: modalTempAmount,
-                type: currentMode,
-                date: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
-            };
-            transactions.unshift(entry);
-            
-            // --- EF VISUAL FLASH ---
-            // Ambil elemen header
-            const header = document.getElementById('headerCard');
-            
-            // Hapus kelas animasi lama jika ada (agar bisa diputar ulang)
-            header.classList.remove('flash-in-effect', 'flash-out-effect');
-            
-            // Paksa reflow agar browser mengenali perubahan kelas (trik animasi ulang)
-            void header.offsetWidth;
-            
-            // Tambahkan kelas animasi sesuai tipe transaksi
-            if (currentMode === 'in') {
-                header.classList.add('flash-in-effect');
-            } else {
-                header.classList.add('flash-out-effect');
-            }
-            // ------------------------
-
-            saveToLocal();
-        }
-
-        function deleteItem(id) {
-            if(confirm('Hapus item ini?')) {
-                transactions = transactions.filter(t => t.id !== id);
-                saveToLocal();
-            }
-        }
-
-        // --- RESET DATA FUNCTION ---
-        function resetData() {
-            if(confirm('PERINGATAN: Semua data transaksi akan dihapus permanen. Anda yakin ingin melanjutkan?')) {
-                transactions = [];
-                saveToLocal();
-                alert("Data berhasil di-reset.");
-            }
-        }
-
-        // --- HITUNG TOTAL & RECAP WA ---
-        function updateTotal() {
-            const total = transactions.reduce((sum, item) => {
-                const type = item.type || 'in';
-                return type === 'in' ? sum + item.amount : sum - item.amount;
-            }, 0);
-            
-            const el = document.getElementById('grandTotal');
-            el.className = 'total-big pop-anim';
-            
-            const currentText = el.innerText.replace(/[^0-9-9-]/g, '');
-            const start = parseInt(currentText) || 0;
-            if (start === total) {
-                el.classList.remove('pop-anim');
-                el.innerText = formatRupiah(total);
-                return;
-            }
-
-            const duration = 600;
-            const startTime = performance.now();
-            function update(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const ease = 1 - Math.pow(1 - progress, 3); 
-                const current = Math.floor(start + (total - start) * ease);
-                el.innerText = formatRupiah(current);
-                if (progress < 1) requestAnimationFrame(update);
-            }
-            requestAnimationFrame(update);
-        }
-
-        function renderList() {
-            const container = document.getElementById('listContainer');
-            container.innerHTML = '';
-            if (transactions.length === 0) {
-                container.innerHTML = '<div style="text-align:center; padding:30px; color:#aaa;">Belum ada transaksi</div>';
-                return;
-            }
-            transactions.forEach((item, index) => {
-                const isOut = (item.type || 'in') === 'out';
-                const div = document.createElement('div');
-                div.className = 'list-item';
-                div.innerHTML = `
-                    <div class="item-left">
-                        <h4>${isOut ? 'Uang Keluar' : 'Uang Masuk'}</h4>
-                        <p>${item.date}</p>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span class="item-amount ${isOut ? 'am-out' : 'am-in'}">${isOut ? '-' : '+'} ${formatRupiah(item.amount).replace('Rp','')}</span>
-                        <button class="btn-del" onclick="deleteItem(${item.id})">&times;</button>
-                    </div>
-                `;
-                container.appendChild(div);
-            });
-        }
-
-        function toggleHistory() {
-            const container = document.getElementById('listContainer');
-            const wrapper = document.getElementById('utilityWrapper');
-            const btn = document.getElementById('toggleBtn');
-            
-            if (container.classList.contains('hidden')) {
-                container.classList.remove('hidden');
-                btn.innerText = "SEMBUNYIKAN";
-                container.parentNode.insertBefore(wrapper, container);
-            } else {
-                container.classList.add('hidden');
-                btn.innerText = "LIHAT RIWAYAT";
-                const btnIn = document.querySelector('.btn-in');
-                btnIn.parentNode.insertBefore(wrapper, btnIn.parentNode);
-            }
-        }
-
-        function formatRupiah(num) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
-        }
-
-        // --- MODAL FUNCTIONS ---
+        // --- MODAL LOGIC ---
         function openModal(mode) {
             currentMode = mode;
             modalTempAmount = 0;
             document.getElementById('modalTempAmount').innerText = formatRupiah(modalTempAmount);
-            const btnSave = document.getElementById('btnSaveModal');
+            
+            const catSelect = document.getElementById('categorySelect');
+            
+            // Set Default Kategori
             if (mode === 'in') {
-                btnSave.style.background = "var(--green)";
-                btnSave.innerText = "MASUK";
+                catSelect.value = "Uang Tip"; 
             } else {
-                btnSave.style.background = "var(--red)";
-                btnSave.innerText = "KELUAR";
+                catSelect.value = "Keluar Lainnya"; // Default keluar
             }
+
+            adjustButtonColor();
+            
             const el = document.getElementById('modalOverlay');
             el.style.display = 'flex';
             setTimeout(() => el.classList.add('show'), 10);
+        }
+
+        function adjustButtonColor() {
+            const btnSave = document.getElementById('btnSaveModal');
+            const catSelect = document.getElementById('categorySelect');
+            const category = catSelect.value;
+
+            // Ubah warna dan teks tombol simpan sesuai kategori
+            if (category.includes("Tip")) {
+                btnSave.style.background = "var(--green)";
+                btnSave.innerText = category.includes("Keluar") ? "KELUAR (TIP)" : "MASUK (TIP)";
+            } else if (category.includes("Nombok")) {
+                btnSave.style.background = "var(--orange)";
+                btnSave.innerText = category.includes("Keluar") ? "KELUAR (NOMBOK)" : "MASUK (NOMBOK)";
+            } else {
+                btnSave.style.background = currentMode === 'out' ? "var(--red)" : "var(--blue)";
+                btnSave.innerText = currentMode === 'out' ? "KELUAR" : "MASUK";
+            }
         }
 
         function closeModal() {
@@ -433,51 +386,196 @@
             document.getElementById('modalTempAmount').innerText = formatRupiah(modalTempAmount);
         }
 
-        // --- WHATSAPP RECAP (DETAIL) ---
+        function confirmModal() {
+            if (modalTempAmount === 0) return showToast("Masukkan nominal!");
+            
+            const catSelect = document.getElementById('categorySelect');
+            const category = catSelect.value;
+            let type = currentMode;
+
+            // Override type berdasarkan kategori jika user memilih secara manual
+            if (category.startsWith("Keluar")) type = 'out';
+
+            closeModal();
+            const entry = {
+                id: Date.now(),
+                amount: modalTempAmount,
+                type: type, 
+                category: category,
+                date: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' })
+            };
+            transactions.unshift(entry);
+            
+            const header = document.getElementById('headerCard');
+            header.classList.remove('flash-in', 'flash-out', 'flash-nombok');
+            void header.offsetWidth; 
+            
+            if (type === 'in') {
+                header.classList.add('flash-in');
+            } else {
+                header.classList.add('flash-out');
+            }
+            
+            saveToLocal();
+            showToast("Transaksi Disimpan");
+        }
+
+        // --- LIST & RENDER ---
+        function renderList() {
+            const container = document.getElementById('listContainer');
+            container.innerHTML = '';
+            if (transactions.length === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:30px; color:#aaa;">Belum ada data</div>';
+                return;
+            }
+            transactions.forEach((item) => {
+                const isOut = item.type === 'out';
+                let badgeClass = 'bg-misc';
+                
+                if(item.category.includes("Tip")) badgeClass = 'bg-tip';
+                else if(item.category.includes("Nombok")) badgeClass = 'bg-nombok';
+
+                const div = document.createElement('div');
+                div.className = 'list-item';
+                div.innerHTML = `
+                    <div class="item-top">
+                        <div class="item-left">
+                            <span class="cat-badge ${badgeClass}">${item.category}</span>
+                            <h4>${isOut ? 'Pengeluaran' : 'Pemasukan'}</h4>
+                            <p>${item.date}</p>
+                        </div>
+                        <span class="item-amount ${isOut ? 'am-out' : 'am-in'}">${isOut ? '-' : '+'} ${formatRupiah(item.amount).replace('Rp','')}</span>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn-del" onclick="deleteItem(${item.id})">
+                            Hapus
+                        </button>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function deleteItem(id) {
+            if(confirm('Hapus item ini?')) {
+                transactions = transactions.filter(t => t.id !== id);
+                saveToLocal();
+            }
+        }
+
+        function updateTotal() {
+            const total = transactions.reduce((sum, item) => {
+                return item.type === 'in' ? sum + item.amount : sum - item.amount;
+            }, 0);
+            document.getElementById('grandTotal').innerText = formatRupiah(total);
+        }
+
+        function toggleHistory() {
+            const container = document.getElementById('listContainer');
+            const btn = document.getElementById('toggleBtn');
+            
+            if (container.classList.contains('hidden')) {
+                container.classList.remove('hidden');
+                btn.innerText = "Tutup";
+            } else {
+                container.classList.add('hidden');
+                btn.innerText = "Buka Riwayat";
+            }
+        }
+
+        function formatRupiah(num) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+        }
+
+        function resetData() {
+            if(confirm('Yakin hapus SEMUA data?')) {
+                transactions = [];
+                saveToLocal();
+                showToast("Data Direset");
+            }
+        }
+
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.innerText = msg;
+            t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 2000);
+        }
+
+        // --- WHATSAPP FORMATTER (FIXED LOGIC: TOTAL AKUMULASI) ---
         function sendToWhatsApp() {
-            if(transactions.length === 0) return alert("Kosong!");
+            if(transactions.length === 0) return showToast("Data kosong!");
             
             const now = new Date();
-            const dateStr = now.toLocaleDateString('id-ID', { dateStyle: 'medium' });
+            const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
             const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-            const todayItems = transactions.filter(item => item.date.split(',')[0] === dateStr);
-
-            // Data untuk WA
-            const todayIn = todayItems.reduce((sum, item) => sum + ((item.type||'in')==='in' ? item.amount : 0), 0);
-            const todayOut = todayItems.reduce((sum, item) => sum + ((item.type||'in')==='out' ? item.amount : 0), 0);
-            const todayNet = todayIn - todayOut;
+            // --- PERUBAHAN LOGIKA: HITUNG SEMUA TRANSAKSI (AKUMULASI) ---
+            // Bukan hanya hari ini, tapi SEMUA WAKTU agar saldo selalu tampil
             
-            const totalIn = transactions.reduce((sum, item) => sum + ((item.type||'in')==='in' ? item.amount : 0), 0);
-            const totalOut = transactions.reduce((sum, item) => sum + ((item.type||'in')==='out' ? item.amount : 0), 0);
-            const totalSisa = totalIn - totalOut;
+            // === LOGIKA UANG TIP ===
+            // Masuk Tip Total
+            const totalTipIn = transactions
+                .filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'in')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Keluar Tip Total
+            const totalTipOut = transactions
+                .filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'out')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Sisa Tip Total (Akumulasi)
+            const sisaTipTotal = totalTipIn - totalTipOut;
 
-            let message = `*LAPORAN KEUANGAN TIP*\n`;
+            // === LOGIKA UANG NOMBAK ===
+            // Masuk Nombok Total
+            const totalNombokIn = transactions
+                .filter(t => (t.category === 'Uang Nombok' || t.category === 'Keluar Nombok') && t.type === 'in')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Keluar Nombok Total
+            const totalNombokOut = transactions
+                .filter(t => (t.category === 'Uang Nombok' || t.category === 'Keluar Nombok') && t.type === 'out')
+                .reduce((sum, t) => sum + t.amount, 0);
+            
+            // Sisa Nombok Total (Akumulasi)
+            const sisaNombokTotal = totalNombokIn - totalNombokOut;
+
+            // TOTAL AKUMULASI (Sisa Tip + Sisa Nombok)
+            const totalAkumulasi = sisaTipTotal + sisaNombokTotal;
+
+            // Format Pesan WA
+            let message = `*LAPORAN KEUANGAN AKUMULASI*\n`;
             message += `================================\n`;
             message += `📅 Tanggal : ${dateStr}\n`;
             message += `⏰ Jam     : ${timeStr}\n\n`;
             
-            message += `📊 *DATA HARI INI:*\n`;
-            message += `💰 Uang Masuk : ${formatRupiah(todayIn)}\n`;
-            message += `📤 Uang Keluar : ${formatRupiah(todayOut)}\n`;
-            message += `📉 Bersih  Hari Ini : ${formatRupiah(todayNet)}\n\n`;
+            message += `*💰 SALDO UANG TIP (TOTAL):*\n`;
+            message += `📥 Terima Uang Tip   : ${formatRupiah(totalTipIn)}\n`;
+            message += `📤 Pakai Uang Tip    : ${formatRupiah(totalTipOut)}\n`;
+            message += `💵 Sisa Uang Tip      : ${formatRupiah(sisaTipTotal)}\n\n`;
 
-            message += `💎 *DATA KESELURUHAN:*\n`;
-            message += `📉 Total Masuk  : ${formatRupiah(totalIn)}\n`;
-            message += `📉 Total Keluar : ${formatRupiah(totalOut)}\n`;
-            message += `💰 Saldo Akhir : ${formatRupiah(totalSisa)}\n`;
+            message += `*🔶 SALDO UANG NOMBAK (TOTAL):*\n`;
+            message += `📥  Uang Nombok Masuk   : ${formatRupiah(totalNombokIn)}\n`;
+            message += `📤  Uang Nombok Keluar  : ${formatRupiah(totalNombokOut)}\n`;
+            message += `💵 Sisa Uang Untuk Nombok   : ${formatRupiah(sisaNombokTotal)}\n\n`;
+
+            message += `*💰 TOTAL SALDO AKUMULASI:*\n`;
+            message += `💳 (Sisa Uang Tip + Sisa Uang Nombok) : ${formatRupiah(totalAkumulasi)}\n`;
+            
             message += `================================\n`;
-            message += `_Terima kasih._`;
+            message += `_Generated by Tip App_`;
 
             const encodedMsg = encodeURIComponent(message);
-            const targetNumber = "6281313601538";
+            // Otomatis kirim ke nomor 081313601538
+            const targetNumber = "6281313601538"; 
             const url = `https://wa.me/${targetNumber}?text=${encodedMsg}`;
             window.open(url, '_blank');
         }
 
-        // --- FILE SYSTEM ---
+        // --- DATA MANAGEMENT ---
         function downloadData() {
-            if(transactions.length === 0) return alert("Kosong!");
+            if(transactions.length === 0) return showToast("Data kosong!");
             const blob = new Blob([JSON.stringify(transactions)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -485,7 +583,7 @@
             a.download = `data_tip_${Date.now()}.json`;
             a.click();
             URL.revokeObjectURL(url);
-            alert("File disimpan!");
+            showToast("File diunduh!");
         }
 
         function triggerUpload() { document.getElementById('fileInput').click(); }
@@ -498,13 +596,17 @@
                 try {
                     const json = JSON.parse(e.target.result);
                     if (Array.isArray(json)) {
-                        if(confirm("Timpa data yang ada?")) {
-                            transactions = json.map(item => typeof item.type==='undefined' ? {...item, type:'in'} : item);
+                        if(confirm("Timpa data yang ada dengan file ini?")) {
+                            transactions = json.map(item => {
+                                if (!item.type) item.type = 'in';
+                                if (!item.category) item.category = 'Lainnya';
+                                return item;
+                            });
                             saveToLocal();
-                            alert("Data berhasil dimuat!");
+                            showToast("Data Berhasil Dimuat!");
                         }
                     }
-                } catch(err) { alert("Error file"); }
+                } catch(err) { alert("Format file salah!"); }
             };
             reader.readAsText(file);
             input.value = '';
