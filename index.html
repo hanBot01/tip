@@ -194,8 +194,6 @@
         .btn-del { background: #fff0f0; color: var(--red); border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
         
         .action-icon { width: 20px; height: 20px; fill: white; }
-
-        #fileInput { display: none; }
         
         /* Toast Notification */
         .toast {
@@ -272,24 +270,12 @@
             </button>
         </div>
 
-        <!-- UTILITAS (SIMPAN, MUAT, SYNC, RESET, WA) -->
+        <!-- UTILITAS (SYNC & WA) -->
         <div class="util-section">
             <div class="util-row">
-                <button class="util-btn" onclick="downloadData()">
-                    <svg class="util-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3a9 9 0 1 0-9-9 9 9 0 0 0 9 9z"></path></svg>
-                    SIMPAN
-                </button>
-                <button class="util-btn" onclick="triggerUpload()">
-                    <svg class="util-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3a9 9 0 1 0-9-9 9 9 0 0 0 9 9z"></path><path d="M12 12v9"></path></svg>
-                    MUAT
-                </button>
                 <button class="util-btn" onclick="syncData()">
                     <svg class="util-icon"><use href="#icon-sync"></use></svg>
                     SYNC
-                </button>
-                <button class="util-btn" onclick="resetData()">
-                    <svg class="util-icon icon-reset" viewBox="0 0 24 24"><use href="#icon-trash"></use></svg>
-                    RESET
                 </button>
                 <button class="util-btn" onclick="sendToWhatsApp()">
                     <svg class="util-icon" viewBox="0 0 24 24" fill="#25D366"><use href="#icon-wa"></use></svg>
@@ -306,14 +292,13 @@
         <div id="listContainer" class="history-list"></div>
     </div>
 
-    <input type="file" id="fileInput" accept=".json" onchange="handleFileUpload(this)">
     <div id="toast" class="toast">Data Tersimpan</div>
 
     <script>
         // --- KONFIGURASI CLOUD (ISI DENGAN DATA ANDA) ---
-// Buat Bin di JSONBin.io, lalu masukkan ID dan Key di sini
-const TIP_BIN_ID = "6974e4f543b1c97be946d044"; 
-const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17CtEW";
+        const TIP_BIN_ID = "6974e4f543b1c97be946d044"; 
+        const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17CtEW";
+
         let transactions = [];
         let currentMode = 'in';
         let modalTempAmount = 0;
@@ -329,7 +314,6 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
                 
                 if (data.record && Array.isArray(data.record)) {
                     transactions = data.record;
-                    // Update LocalStorage agar cadangan
                     localStorage.setItem('tipAppData', JSON.stringify(transactions));
                     console.log("Data dimuat dari Cloud!");
                 } else {
@@ -337,7 +321,6 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
                 }
             } catch (error) {
                 console.log("Gagal ambil Cloud (atau kosong), cek LocalStorage.");
-                // 2. Jika gagal, ambil dari LocalStorage
                 const saved = localStorage.getItem('tipAppData');
                 if (saved) {
                     try {
@@ -355,10 +338,7 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
 
         // --- FUNGSI SIMPAN KE CLOUD ---
         async function saveToCloud() {
-            // Simpan ke LocalStorage dulu (fast)
             localStorage.setItem('tipAppData', JSON.stringify(transactions));
-            
-            // Lalu kirim ke JSONBin
             try {
                 await fetch(`https://api.jsonbin.io/v3/b/${TIP_BIN_ID}`, {
                     method: 'PUT',
@@ -452,7 +432,7 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
                 header.classList.add('flash-out');
             }
             
-            await saveToCloud(); // SIMPAN KE CLOUD DISINI
+            await saveToCloud();
             updateUI();
             showToast("Transaksi Disimpan");
         }
@@ -495,7 +475,7 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
         async function deleteItem(id) {
             if(confirm('Hapus item ini?')) {
                 transactions = transactions.filter(t => t.id !== id);
-                await saveToCloud(); // UPDATE CLOUD
+                await saveToCloud();
                 updateUI();
             }
         }
@@ -523,14 +503,6 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
         }
 
-        function resetData() {
-            if(confirm('Yakin hapus SEMUA data? (Termasuk di Cloud)')) {
-                transactions = [];
-                saveToCloud();
-                showToast("Data Direset");
-            }
-        }
-
         function showToast(msg) {
             const t = document.getElementById('toast');
             t.innerText = msg;
@@ -541,7 +513,7 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
         // --- FITUR SYNC MANUAL ---
         async function syncData() {
             showToast("Sinkronisasi...");
-            window.onload(); // Jalankan ulang fungsi load data
+            window.onload();
         }
 
         // --- WHATSAPP FORMATTER ---
@@ -552,7 +524,6 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
             const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
             const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-            // Hitung Akumulasi
             const totalTipIn = transactions.filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'in').reduce((sum, t) => sum + t.amount, 0);
             const totalTipOut = transactions.filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'out').reduce((sum, t) => sum + t.amount, 0);
             const sisaTipTotal = totalTipIn - totalTipOut;
@@ -588,46 +559,6 @@ const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17
             const targetNumber = "6281313601538"; 
             const url = `https://wa.me/${targetNumber}?text=${encodedMsg}`;
             window.open(url, '_blank');
-        }
-
-        // --- DATA MANAGEMENT ---
-        function downloadData() {
-            if(transactions.length === 0) return showToast("Data kosong!");
-            const blob = new Blob([JSON.stringify(transactions)], { type: "application/json" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `data_tip_${Date.now()}.json`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast("File diunduh!");
-        }
-
-        function triggerUpload() { document.getElementById('fileInput').click(); }
-
-        function handleFileUpload(input) {
-            const file = input.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = async function(e) {
-                try {
-                    const json = JSON.parse(e.target.result);
-                    if (Array.isArray(json)) {
-                        if(confirm("Timpa data yang ada dengan file ini?")) {
-                            transactions = json.map(item => {
-                                if (!item.type) item.type = 'in';
-                                if (!item.category) item.category = 'Lainnya';
-                                return item;
-                            });
-                            await saveToCloud(); // Upload ke cloud
-                            updateUI();
-                            showToast("Data Berhasil Dimuat!");
-                        }
-                    }
-                } catch(err) { alert("Format file salah!"); }
-            };
-            reader.readAsText(file);
-            input.value = '';
         }
     </script>
 </body>
