@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Aplikasi Hitung Tip & Nombok</title>
+    <title>Aplikasi Hitung Tip & Nombok (Cloud)</title>
     <style>
         :root {
             --green: #28a745;
@@ -214,6 +214,7 @@
         <symbol id="icon-minus" viewBox="0 0 24 24"><path d="M5 12h14" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
         <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></symbol>
         <symbol id="icon-wa" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z"/></symbol>
+        <symbol id="icon-sync" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6"></path><path d="M1 20v-6h6"></path><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></symbol>
     </svg>
 
     <!-- MODAL POPUP -->
@@ -271,7 +272,7 @@
             </button>
         </div>
 
-        <!-- UTILITAS (SIMPAN, MUAT, RESET, WA) -->
+        <!-- UTILITAS (SIMPAN, MUAT, SYNC, RESET, WA) -->
         <div class="util-section">
             <div class="util-row">
                 <button class="util-btn" onclick="downloadData()">
@@ -281,6 +282,10 @@
                 <button class="util-btn" onclick="triggerUpload()">
                     <svg class="util-icon" viewBox="0 0 24 24" fill="none" stroke="#555" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3a9 9 0 1 0-9-9 9 9 0 0 0 9 9z"></path><path d="M12 12v9"></path></svg>
                     MUAT
+                </button>
+                <button class="util-btn" onclick="syncData()">
+                    <svg class="util-icon"><use href="#icon-sync"></use></svg>
+                    SYNC
                 </button>
                 <button class="util-btn" onclick="resetData()">
                     <svg class="util-icon icon-reset" viewBox="0 0 24 24"><use href="#icon-trash"></use></svg>
@@ -305,34 +310,74 @@
     <div id="toast" class="toast">Data Tersimpan</div>
 
     <script>
+        // --- KONFIGURASI CLOUD (ISI DENGAN DATA ANDA) ---
+// Buat Bin di JSONBin.io, lalu masukkan ID dan Key di sini
+const TIP_BIN_ID = "6974e4f543b1c97be946d044"; 
+const TIP_MASTER_KEY = "$2a$10$bzkU1GyyqKF.i2CA0DCMjeVswtmX1HGeqnDEfsdg/nU2b6d17CtEW";
         let transactions = [];
         let currentMode = 'in';
         let modalTempAmount = 0;
 
-        window.onload = function() {
-            const saved = localStorage.getItem('tipAppData');
-            if (saved) {
-                try {
-                    let raw = JSON.parse(saved);
-                    transactions = raw.map(item => {
-                        // Pastikan tipe ada untuk kompatibilitas data lama
-                        if (typeof item.type === 'undefined') item.type = 'in';
-                        if (!item.category) item.category = 'Lainnya';
-                        return item;
-                    });
-                } catch (e) {}
+        // --- INIT & CLOUD SYNC ---
+        window.onload = async function() {
+            // 1. Coba ambil data dari Cloud dulu
+            try {
+                const response = await fetch(`https://api.jsonbin.io/v3/b/${TIP_BIN_ID}/latest`, {
+                    headers: { 'X-Master-Key': TIP_MASTER_KEY }
+                });
+                const data = await response.json();
+                
+                if (data.record && Array.isArray(data.record)) {
+                    transactions = data.record;
+                    // Update LocalStorage agar cadangan
+                    localStorage.setItem('tipAppData', JSON.stringify(transactions));
+                    console.log("Data dimuat dari Cloud!");
+                } else {
+                    throw new Error("Format data salah");
+                }
+            } catch (error) {
+                console.log("Gagal ambil Cloud (atau kosong), cek LocalStorage.");
+                // 2. Jika gagal, ambil dari LocalStorage
+                const saved = localStorage.getItem('tipAppData');
+                if (saved) {
+                    try {
+                        let raw = JSON.parse(saved);
+                        transactions = raw.map(item => {
+                            if (typeof item.type === 'undefined') item.type = 'in';
+                            if (!item.category) item.category = 'Lainnya';
+                            return item;
+                        });
+                    } catch (e) {}
+                }
             }
             updateUI();
         };
 
+        // --- FUNGSI SIMPAN KE CLOUD ---
+        async function saveToCloud() {
+            // Simpan ke LocalStorage dulu (fast)
+            localStorage.setItem('tipAppData', JSON.stringify(transactions));
+            
+            // Lalu kirim ke JSONBin
+            try {
+                await fetch(`https://api.jsonbin.io/v3/b/${TIP_BIN_ID}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Master-Key': TIP_MASTER_KEY
+                    },
+                    body: JSON.stringify(transactions)
+                });
+                console.log("Data tersimpan ke Cloud!");
+            } catch (error) {
+                console.error("Gagal simpan Cloud:", error);
+                alert("Peringatan: Gagal menyimpan ke Cloud! Data tersimpan di HP saja.");
+            }
+        }
+
         function updateUI() {
             renderList();
             updateTotal();
-        }
-
-        function saveToLocal() {
-            localStorage.setItem('tipAppData', JSON.stringify(transactions));
-            updateUI();
         }
 
         // --- MODAL LOGIC ---
@@ -342,16 +387,10 @@
             document.getElementById('modalTempAmount').innerText = formatRupiah(modalTempAmount);
             
             const catSelect = document.getElementById('categorySelect');
-            
-            // Set Default Kategori
-            if (mode === 'in') {
-                catSelect.value = "Uang Tip"; 
-            } else {
-                catSelect.value = "Keluar Lainnya"; // Default keluar
-            }
+            if (mode === 'in') catSelect.value = "Uang Tip"; 
+            else catSelect.value = "Keluar Lainnya";
 
             adjustButtonColor();
-            
             const el = document.getElementById('modalOverlay');
             el.style.display = 'flex';
             setTimeout(() => el.classList.add('show'), 10);
@@ -362,7 +401,6 @@
             const catSelect = document.getElementById('categorySelect');
             const category = catSelect.value;
 
-            // Ubah warna dan teks tombol simpan sesuai kategori
             if (category.includes("Tip")) {
                 btnSave.style.background = "var(--green)";
                 btnSave.innerText = category.includes("Keluar") ? "KELUAR (TIP)" : "MASUK (TIP)";
@@ -386,14 +424,12 @@
             document.getElementById('modalTempAmount').innerText = formatRupiah(modalTempAmount);
         }
 
-        function confirmModal() {
+        async function confirmModal() {
             if (modalTempAmount === 0) return showToast("Masukkan nominal!");
             
             const catSelect = document.getElementById('categorySelect');
             const category = catSelect.value;
             let type = currentMode;
-
-            // Override type berdasarkan kategori jika user memilih secara manual
             if (category.startsWith("Keluar")) type = 'out';
 
             closeModal();
@@ -416,7 +452,8 @@
                 header.classList.add('flash-out');
             }
             
-            saveToLocal();
+            await saveToCloud(); // SIMPAN KE CLOUD DISINI
+            updateUI();
             showToast("Transaksi Disimpan");
         }
 
@@ -431,7 +468,6 @@
             transactions.forEach((item) => {
                 const isOut = item.type === 'out';
                 let badgeClass = 'bg-misc';
-                
                 if(item.category.includes("Tip")) badgeClass = 'bg-tip';
                 else if(item.category.includes("Nombok")) badgeClass = 'bg-nombok';
 
@@ -456,10 +492,11 @@
             });
         }
 
-        function deleteItem(id) {
+        async function deleteItem(id) {
             if(confirm('Hapus item ini?')) {
                 transactions = transactions.filter(t => t.id !== id);
-                saveToLocal();
+                await saveToCloud(); // UPDATE CLOUD
+                updateUI();
             }
         }
 
@@ -473,7 +510,6 @@
         function toggleHistory() {
             const container = document.getElementById('listContainer');
             const btn = document.getElementById('toggleBtn');
-            
             if (container.classList.contains('hidden')) {
                 container.classList.remove('hidden');
                 btn.innerText = "Tutup";
@@ -488,9 +524,9 @@
         }
 
         function resetData() {
-            if(confirm('Yakin hapus SEMUA data?')) {
+            if(confirm('Yakin hapus SEMUA data? (Termasuk di Cloud)')) {
                 transactions = [];
-                saveToLocal();
+                saveToCloud();
                 showToast("Data Direset");
             }
         }
@@ -502,7 +538,13 @@
             setTimeout(() => t.classList.remove('show'), 2000);
         }
 
-        // --- WHATSAPP FORMATTER (FIXED LOGIC: TOTAL AKUMULASI) ---
+        // --- FITUR SYNC MANUAL ---
+        async function syncData() {
+            showToast("Sinkronisasi...");
+            window.onload(); // Jalankan ulang fungsi load data
+        }
+
+        // --- WHATSAPP FORMATTER ---
         function sendToWhatsApp() {
             if(transactions.length === 0) return showToast("Data kosong!");
             
@@ -510,41 +552,17 @@
             const dateStr = now.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
             const timeStr = now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
 
-            // --- PERUBAHAN LOGIKA: HITUNG SEMUA TRANSAKSI (AKUMULASI) ---
-            // Bukan hanya hari ini, tapi SEMUA WAKTU agar saldo selalu tampil
-            
-            // === LOGIKA UANG TIP ===
-            // Masuk Tip Total
-            const totalTipIn = transactions
-                .filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'in')
-                .reduce((sum, t) => sum + t.amount, 0);
-            
-            // Keluar Tip Total
-            const totalTipOut = transactions
-                .filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'out')
-                .reduce((sum, t) => sum + t.amount, 0);
-            
-            // Sisa Tip Total (Akumulasi)
+            // Hitung Akumulasi
+            const totalTipIn = transactions.filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'in').reduce((sum, t) => sum + t.amount, 0);
+            const totalTipOut = transactions.filter(t => (t.category === 'Uang Tip' || t.category === 'Keluar Tip') && t.type === 'out').reduce((sum, t) => sum + t.amount, 0);
             const sisaTipTotal = totalTipIn - totalTipOut;
 
-            // === LOGIKA UANG NOMBAK ===
-            // Masuk Nombok Total
-            const totalNombokIn = transactions
-                .filter(t => (t.category === 'Uang Nombok' || t.category === 'Keluar Nombok') && t.type === 'in')
-                .reduce((sum, t) => sum + t.amount, 0);
-            
-            // Keluar Nombok Total
-            const totalNombokOut = transactions
-                .filter(t => (t.category === 'Uang Nombok' || t.category === 'Keluar Nombok') && t.type === 'out')
-                .reduce((sum, t) => sum + t.amount, 0);
-            
-            // Sisa Nombok Total (Akumulasi)
+            const totalNombokIn = transactions.filter(t => (t.category === 'Uang Nombok' || t.category === 'Keluar Nombok') && t.type === 'in').reduce((sum, t) => sum + t.amount, 0);
+            const totalNombokOut = transactions.filter(t => (t.category === 'Uang Nombok' || t.category === 'Keluar Nombok') && t.type === 'out').reduce((sum, t) => sum + t.amount, 0);
             const sisaNombokTotal = totalNombokIn - totalNombokOut;
 
-            // TOTAL AKUMULASI (Sisa Tip + Sisa Nombok)
             const totalAkumulasi = sisaTipTotal + sisaNombokTotal;
 
-            // Format Pesan WA
             let message = `*LAPORAN KEUANGAN AKUMULASI*\n`;
             message += `================================\n`;
             message += `📅 Tanggal : ${dateStr}\n`;
@@ -567,7 +585,6 @@
             message += `_Generated by Tip App_`;
 
             const encodedMsg = encodeURIComponent(message);
-            // Otomatis kirim ke nomor 081313601538
             const targetNumber = "6281313601538"; 
             const url = `https://wa.me/${targetNumber}?text=${encodedMsg}`;
             window.open(url, '_blank');
@@ -592,7 +609,7 @@
             const file = input.files[0];
             if (!file) return;
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
                     const json = JSON.parse(e.target.result);
                     if (Array.isArray(json)) {
@@ -602,7 +619,8 @@
                                 if (!item.category) item.category = 'Lainnya';
                                 return item;
                             });
-                            saveToLocal();
+                            await saveToCloud(); // Upload ke cloud
+                            updateUI();
                             showToast("Data Berhasil Dimuat!");
                         }
                     }
